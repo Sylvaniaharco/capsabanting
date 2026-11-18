@@ -5,14 +5,20 @@ import { RULES } from './rules.config.js';
 import { deal, mulberry32, sortHand, countTwos } from './cards.js';
 import { classify, beats, owns } from './combos.js';
 
-/** Ronde baru. Yang jalan pertama = pemegang rules.firstCard (3♦); kalau firstCard null, `starter`. */
-export function newHand(seed, rules = RULES, starter = 0) {
+/**
+ * Ronde baru. starter = kursi pemenang ronde sebelumnya (−1 / null = ronde pertama meja).
+ * Ronde pertama: pemegang rules.firstCard (3♦) jalan pertama & langkah pertamanya wajib mengandung kartu itu.
+ * Ronde berikutnya (rules.winnerLeads): pemenang sebelumnya jalan duluan, bebas.
+ */
+export function newHand(seed, rules = RULES, starter = -1) {
   const N = rules.players;
   const hands = deal(mulberry32(seed >>> 0), N, rules.handSize);
-  const holder = rules.firstCard == null ? starter : hands.findIndex((h) => h.includes(rules.firstCard));
+  const opening = !(starter >= 0 && starter < N) || !rules.winnerLeads;
+  const holder = opening && rules.firstCard != null ? hands.findIndex((h) => h.includes(rules.firstCard)) : starter >= 0 ? starter : 0;
   return {
     rules, seed: seed >>> 0, phase: 'play', hands, turn: holder, leader: holder,
-    first: rules.firstCard != null, // langkah pertama ronde wajib mengandung firstCard
+    first: opening && rules.firstCard != null, // langkah pertama ronde wajib mengandung firstCard
+    fault: null, // { seat, next }: langkah terakhir "kasih menang" (lihat faultOf); dipakai kalau `next` langsung habis
     trick: { last: null, passes: 0 }, // last = { seat, cards, combo } | null
     plays: [], // { seat, cards, combo } | { seat, pass: true } | { seat:-1, trick:true } (tanda putaran baru)
     playsBy: new Array(N).fill(0),
@@ -23,6 +29,24 @@ export function newHand(seed, rules = RULES, starter = 0) {
 }
 
 const nextSeat = (g, s) => (s + 1) % g.rules.players;
+
+/**
+ * "Kasih menang": pemain sesudah `seat` tinggal 1 kartu, putarannya satu-satuan (atau memimpin), dan `seat` tidak memakai kartu tertingginya:
+ * keluar satu kartu yang bukan tertinggi, atau pass padahal kartu tertingginya bisa menutup kartu di meja. -> true kalau melanggar.
+ * Memimpin dengan pasang / tris / 5 kartu tidak melanggar (pemain dengan 1 kartu tidak bisa ikut).
+ */
+export function faultOf(g, seat, a) {
+  if (!g.rules.payAll) return false;
+  const nx = nextSeat(g, seat);
+  if (g.hands[nx].length !== 1) return false;
+  const hand = g.hands[seat];
+  const top = Math.max(...hand);
+  const prev = prevCombo(g);
+  if (prev && prev.n !== 1) return false;
+  if (a.t === 'pass') return !!prev && top > prev.key;
+  if (a.t === 'play' && Array.isArray(a.cards) && a.cards.length === 1) return a.cards[0] !== top;
+  return false;
+}
 
 /** Sedang memimpin putaran baru? (tidak bisa pass) */
 export const mustLead = (g) => g.phase === 'play' && !g.trick.last;
@@ -56,8 +80,10 @@ export function applyAction(g, seat, a) {
   if (g.phase === 'done') return { ok: false, error: 'Ronde sudah selesai' };
   if (seat !== g.turn) return { ok: false, error: 'Bukan giliranmu' };
   const tr = g.trick;
+  const fault = faultOf(g, seat, a) ? { seat, next: nextSeat(g, seat) } : null;
   if (a.t === 'pass') {
     if (mustLead(g)) return { ok: false, error: 'Kamu harus mengeluarkan kartu' };
+    g.fault = fault;
     g.plays.push({ seat, pass: true });
     pushLog(g, { k: 'pass', seat });
     tr.passes++;
@@ -76,6 +102,8 @@ export function applyAction(g, seat, a) {
   if (a.t !== 'play') return { ok: false, error: 'Aksi tidak dikenal' };
   const chk = checkPlay(g, seat, a.cards);
   if (!chk.ok) return chk;
+  const blame = g.fault && g.fault.next === seat ? g.fault.seat : -1; // langkah sebelum ini "kasih menang" ke pemain ini
+  g.fault = fault;
   const cards = sortHand(a.cards);
   const set = new Set(cards);
   g.hands[seat] = g.hands[seat].filter((c) => !set.has(c));
@@ -85,7 +113,7 @@ export function applyAction(g, seat, a) {
   g.plays.push({ seat, cards, combo: chk.combo });
   g.playsBy[seat]++;
   pushLog(g, { k: 'play', seat, type: chk.combo.type });
-  if (!g.hands[seat].length) finish(g, seat);
+  if (!g.hands[seat].length) finish(g, seat, blame);
   else g.turn = nextSeat(g, seat);
   return { ok: true };
 }
@@ -104,22 +132,26 @@ export function penalty(left, twos, rules = RULES) {
 /**
  * Skor ronde dari tangan tersisa. -> { points:[per kursi], rows:[{ left, mult, twos, twoPts, base, pts }] }
  * Pemenang (0 kartu) menerima jumlah poin semua yang kalah, jadi totalnya 0.
+ * payAll = kursi yang "kasih menang" (−1 = tidak ada): dia membayar poin semua yang kalah, yang lain 0.
  */
-export function scoreHands(hands, winner, rules = RULES) {
+export function scoreHands(hands, winner, rules = RULES, payAll = -1) {
   const rows = hands.map((h) => {
     const left = h.length, twos = countTwos(h), mult = multOf(left, rules);
     return { left, mult, twos, base: left * mult, twoPts: twos * rules.twoBonus, pts: penalty(left, twos, rules) };
   });
   const points = rows.map((r, i) => (i === winner ? 0 : -r.pts));
   points[winner] = -points.reduce((a, b) => a + b, 0);
+  if (payAll >= 0 && payAll !== winner) points.forEach((p, i) => { if (i !== winner) points[i] = i === payAll ? -points[winner] : 0; });
   return { points, rows };
 }
 
-function finish(g, winner) {
+function finish(g, winner, blame = -1) {
   g.phase = 'done';
   g.turn = -1;
-  const s = scoreHands(g.hands, winner, g.rules);
-  g.result = { winner, points: s.points, rows: s.rows };
+  const payAll = g.rules.payAll && blame >= 0 ? blame : -1;
+  const s = scoreHands(g.hands, winner, g.rules, payAll);
+  g.result = { winner, points: s.points, rows: s.rows, payAll };
+  if (payAll >= 0) pushLog(g, { k: 'payall', seat: payAll });
   pushLog(g, { k: 'done', seat: winner });
 }
 

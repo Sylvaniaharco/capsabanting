@@ -8,7 +8,7 @@
 // - Sulit : Sedang + utamakan turun dari 5 → 4 dan 9 → 8 kartu (menghindari lompatan pengali), dan menghadang lawan yang hampir habis.
 import { rankOf, counts, R2 } from './cards.js';
 import { allMoves, legalMoves, FIVE } from './combos.js';
-import { mustLead, prevCombo, multOf } from './game.js';
+import { mustLead, prevCombo, multOf, faultOf } from './game.js';
 
 export const LEVELS = { easy: 'Mudah', normal: 'Sedang', hard: 'Sulit' };
 export const DEFAULT_LEVEL = 'normal';
@@ -108,6 +108,12 @@ function chooseSmart(g, seat, hard, rnd) {
   const danger = I.minOpp <= FEW; // ada lawan hampir habis
   const finisher = moves.find((m) => m.cards.length === hand.length);
   if (finisher) return finisher;
+  // "kasih menang" = bayar semua: pemain sesudahku tinggal 1 kartu → satu kartu hanya boleh kartu tertinggi, dan jangan pass kalau bisa menutup
+  if (g.rules.payAll && I.nextN === 1) {
+    const safe = moves.filter((m) => !faultOf(g, seat, { t: 'play', cards: m.cards }));
+    if (!lead && prevCombo(g).n === 1) return safe[0] || null; // ikut satu kartu: kartu tertinggi kalau bisa menutup, kalau tidak pass (aman)
+    if (safe.length) moves.splice(0, moves.length, ...safe);
+  }
   const fives = fiveCandidates(hand, g.rules);
   const now = planCost(hand, fives);
   const N = hand.length;
@@ -173,12 +179,21 @@ export function botAction(g, seat, level = DEFAULT_LEVEL, rnd = Math.random) {
 }
 
 /** Kartu terendah yang sah untuk memimpin (langkah pertama = 3♦). */
-const lowestPlay = (g, seat) => (g.first ? g.rules.firstCard : Math.min(...g.hands[seat]));
+/** Kartu yang aman untuk memimpin: langkah pertama = 3♦; pemain sesudahku tinggal 1 kartu = kartu tertinggi (bukan "kasih menang"). */
+const lowestPlay = (g, seat) => {
+  if (g.first) return g.rules.firstCard;
+  const h = g.hands[seat];
+  return g.rules.payAll && g.hands[(seat + 1) % g.rules.players].length === 1 ? Math.max(...h) : Math.min(...h);
+};
 
-/** Waktu habis: mengikuti = pass; memimpin = kartu terendah (langkah pertama = 3♦). */
+/**
+ * Waktu habis: memimpin = kartu terendah (langkah pertama = 3♦); mengikuti = pass. Kalau pemain sesudahnya tinggal 1 kartu,
+ * dimainkan supaya tidak "kasih menang" (kartu tertinggi), jadi pemain yang kehabisan waktu tidak kena bayar semua.
+ */
 export function timeoutAction(g, seat) {
-  if (!mustLead(g)) return { t: 'pass' };
-  return { t: 'play', cards: [lowestPlay(g, seat)] };
+  if (mustLead(g)) return { t: 'play', cards: [lowestPlay(g, seat)] };
+  if (faultOf(g, seat, { t: 'pass' })) return { t: 'play', cards: [Math.max(...g.hands[seat])] };
+  return { t: 'pass' };
 }
 
 /**

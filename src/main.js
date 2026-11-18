@@ -214,10 +214,11 @@ function showRules(then) {
     <p>${tx('4 pemain, 52 kartu tanpa joker, masing-masing 13 kartu. Yang pertama menghabiskan kartu menang; ronde langsung selesai.')}</p>
     <h3>${tx('Urutan kartu')}</h3><p>${RANKS.join(' · ')}. ${tx('Bunga')}: <span class="su-order">${[0, 1, 2, 3].map(suitIcon).join(' &lt; ')}</span> (${tx('wajik < keriting < hati < sekop')}).</p>
     <h3>${tx('Jalan')}</h3>
-    <ul><li>${tx('Pemegang 3♦ jalan pertama, dan kartu pertama yang dikeluarkan harus mengandung 3♦.')}</li>
+    <ul><li>${tx('Ronde pertama: pemegang 3♦ jalan pertama, dan kartu pertama yang dikeluarkan harus mengandung 3♦. Ronde berikutnya: pemenang ronde sebelumnya jalan duluan, bebas.')}</li>
       <li>${tx('Kombinasi: satu, pasang, tris, dan kombinasi 5 kartu. Hanya bisa dilawan kombinasi dengan jumlah kartu sama yang nilainya lebih tinggi.')}</li>
       <li>${tx('Pass boleh, dan pemain yang pass tetap boleh main lagi saat gilirannya datang. Kalau semua pemain lain pass, pemain terakhir yang main bebas jalan kombinasi apa pun.')}</li>
-      <li>${tx('Boleh menutup permainan pakai kartu 2.')}</li></ul>
+      <li>${tx('Boleh menutup permainan pakai kartu 2.')}</li>
+      <li>${tx('Kasih menang = bayar semua: kalau pemain sesudahmu tinggal 1 kartu dan putarannya satu kartu, kamu wajib keluarkan kartu tertinggimu. Kalau kamu keluarkan kartu lebih kecil, atau pass padahal bisa menutup, lalu dia habis, kamu bayar poin semua yang kalah.')}</li></ul>
     <h3>${tx('Kombinasi 5 kartu')}</h3>
     <ul><li>${tx('Straight < flush < full house < four of a kind + 1 < straight flush. Jenis yang lebih tinggi selalu menang.')}</li>
       <li>${tx('Straight & straight flush: kartu tertinggi, kalau sama lihat bunganya. Flush: kartu tertinggi, kalau sama lihat bunganya. Full house: angka tris. Four: angka empatnya.')}</li>
@@ -725,15 +726,31 @@ function setSel(c, on) {
   for (const el of handBox.querySelectorAll('.card')) el.classList.toggle('sel', T.sel.has(Number(el.dataset.c)));
 }
 
-/** Catatan untuk kartu yang dipilih (sama dengan pengecekan server di game.checkPlay). -> { ok, text } */
-function selNote(g, sel) {
-  if (!sel.length) return { ok: false, text: g.first ? tx('Jalan pertama: wajib pakai 3♦') : g.mustLead ? tx('Bebas jalan') : '' };
+/**
+ * "Kasih menang" mengancam? Pemain sesudahku tinggal 1 kartu dan putarannya satu-satuan (atau aku memimpin) — sama dengan game.faultOf.
+ * -> kartu tertinggiku (yang wajib dikeluarkan kalau main satu) atau null.
+ */
+function payAllRisk(g, seat) {
+  if (!RULES.payAll || !g.hand?.length || g.counts[(seat + 1) % NP] !== 1) return null;
+  const prev = g.mustLead ? null : g.last?.combo;
+  if (prev && prev.n !== 1) return null;
+  return Math.max(...g.hand);
+}
+
+/** Catatan untuk kartu yang dipilih (sama dengan pengecekan server di game.checkPlay). -> { ok, text, warn } */
+function selNote(g, sel, seat) {
+  const top = payAllRisk(g, seat);
+  if (!sel.length) {
+    if (top !== null) return { ok: false, warn: true, text: tx('Pemain sesudahmu sisa 1 kartu: main satu = wajib kartu tertinggi, kalau tidak bisa kena bayar semua') };
+    return { ok: false, text: g.first ? tx('Jalan pertama: wajib pakai 3♦') : g.mustLead ? tx('Bebas jalan') : '' };
+  }
   const combo = classify(sel, RULES);
   if (g.first && !sel.includes(RULES.firstCard)) return { ok: false, text: tx('Langkah pertama harus mengandung 3♦') };
   if (!combo) return { ok: false, text: tx('Kombinasi tidak sah') };
   const prev = g.mustLead ? null : g.last?.combo;
   if (prev && combo.n !== prev.n) return { ok: false, text: tx('Jumlah kartu harus sama') };
   if (prev && !beats(combo, prev)) return { ok: false, text: tx('Tidak bisa mengalahkan') };
+  if (top !== null && sel.length === 1 && sel[0] !== top) return { ok: true, warn: true, text: tx('Awas: bukan kartu tertinggimu — kalau dia habis, kamu bayar semua') };
   return { ok: true, text: tx(TYPE_NAMES[combo.type]) };
 }
 
@@ -748,12 +765,12 @@ function renderActions(v) {
   const html = [];
   if (me?.auto) html.push(`<span class="note">${tx('Main otomatis aktif')}</span><button class="btn primary" data-act="takeover" type="button">${tx('Main lagi sendiri')}</button>`);
   else if (myTurn) {
-    const note = selNote(g, [...T.sel]);
+    const note = selNote(g, [...T.sel], v.seat);
     html.push(`<button class="btn" data-act="pass" type="button"${g.mustLead ? ' disabled' : ''}>${tx('Pass')}</button>`);
     html.push(`<button class="btn" data-act="hint" type="button">${tx('Saran')}</button>`);
     html.push(`<button class="btn primary" data-act="play" type="button"${note.ok ? '' : ' disabled'}>${tx('Keluarkan')}</button>`);
     html.push('<div class="timer" id="myTimer"><b></b></div>');
-    if (note.text) html.push(`<span class="note${note.ok || !T.sel.size ? '' : ' bad'}">${esc(note.text)}</span>`);
+    if (note.text) html.push(`<span class="note${note.warn || (!note.ok && T.sel.size) ? ' bad' : ''}">${esc(note.text)}</span>`);
   } else {
     html.push(`<button class="btn small ghost" data-act="sort" type="button">${settings.sort === 'suit' ? tx('Urut angka') : tx('Urut bunga')}</button>`);
     if (T.sel.size) html.push(`<button class="btn small ghost" data-act="clear" type="button">${tx('Batal pilih')}</button>`);
@@ -880,7 +897,7 @@ function renderResult(view) {
       return `<tr><td>${d === 0 && me >= 0 ? tx('Kamu') : esc(s?.name || '')}${s?.bot ? ' 🤖' : ''}${L.abandoned?.[k] ? ` <small>(${tx('kabur')})</small>` : ''}${left.length ? miniRow(left) : ''}</td>
         <td>${win ? '—' : r.left}</td><td class="mx c-x">${win ? '—' : `×${r.mult}`}</td>
         <td class="two c-x">${win || !r.twos ? '—' : `${r.twos} <small>+${r.twoPts}</small>`}</td>
-        <td class="${cls(L.points[k])}">${signed(L.points[k])}${!win ? `<small>${r.left}×${r.mult}${r.twos ? ` + ${r.twos}×${RULES.twoBonus}` : ''}</small>` : ''}</td>${coinCell}
+        <td class="${cls(L.points[k])}">${signed(L.points[k])}${!win ? `<small>${r.left}×${r.mult}${r.twos ? ` + ${r.twos}×${RULES.twoBonus}` : ''}${L.payAll >= 0 ? (k === L.payAll ? ` · ${tx('bayar semua')}` : ` · ${tx('dibayar {name}', { name: esc(nameOf(v, L.payAll)) })}`) : ''}</small>` : ''}</td>${coinCell}
         <td class="tot">${signed(v.totals[k])}</td></tr>`;
     }).join('');
     const fin = (v.game?.plays || []).filter((p) => p.cards).at(-1);
@@ -893,6 +910,8 @@ function renderResult(view) {
     } else if (v.kind === 'practice' && v.stake && T.paid?.round === v.round) {
       extra = `<p class="rs-rating ${cls(T.paid.delta)}"><i class="coin"></i> ${signed(T.paid.delta)} → ${fmt(wallet.coins)} <small>(${tx('koin meja bot')})</small></p>`;
     }
+    // kasih menang: siapa yang bayar semua (dan kenapa yang lain 0)
+    if (L.payAll >= 0) extra = `<p class="rs-bonus">${esc(tx('Kasih menang: {name} bayar semua', { name: nameOf(v, L.payAll) }))}</p>` + extra;
     let btns = `<button class="btn" data-r="peek" type="button">${tx('Lihat meja')}</button><button class="btn" data-r="leave" type="button">${tx('Keluar')}</button>`;
     if (ranked) btns += `<span class="note" id="rsNext"></span>`;
     else if (v.host === v.seat) btns += `<button class="btn primary" data-r="next" type="button">${tx('Lanjut')}</button>`;
@@ -981,6 +1000,7 @@ function playEffects(v) {
       else if (e.seat !== v.seat) sfx('play');
     } else if (e.k === 'pass' && e.seat !== v.seat) sfx('pass');
     else if (e.k === 'trick') { if (e.seat === v.seat) toast(tx('Semua pass — kamu bebas jalan'), 1600); }
+    else if (e.k === 'payall') { sfx('bad'); toast(tx('Kasih menang: {name} bayar semua', { name: nameOf(v, e.seat) }), 3500); }
     else if (e.k === 'done') { sfx('sweep'); fx(`<div class="flash"></div><div class="boom">${e.seat === v.seat ? tx('HABIS!') : esc(tx('{name} habis!', { name: nameOf(v, e.seat) }))}</div>`, 1500); }
   }
   // peringatan: lawan tinggal 1 kartu

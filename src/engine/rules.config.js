@@ -17,7 +17,13 @@ export const RULES = Object.freeze({
   straightOrder: Object.freeze([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
 
   // ---------- jalan pertama ----------
-  firstCard: 0, // 3♦: pemegangnya jalan pertama dan kartu pertama yang dikeluarkan wajib mengandung kartu ini (null = bebas)
+  firstCard: 0, // 3♦: di ronde PERTAMA meja, pemegangnya jalan pertama dan kartu pertama wajib mengandung kartu ini (null = bebas)
+  winnerLeads: true, // ronde berikutnya: pemenang ronde sebelumnya jalan duluan, bebas (tanpa kewajiban 3♦). false = pemegang 3♦ tiap ronde
+
+  // ---------- kasih menang (aturan rumah Teddy) ----------
+  // Pemain sesudahmu tinggal 1 kartu & putaran satu-satuan: kamu wajib keluarkan kartu TERTINGGI-mu. Kalau kamu keluarkan kartu satu yang
+  // lebih kecil, atau pass padahal kartu tertinggimu bisa menutup, lalu dia langsung habis → kamu bayar poin semua yang kalah.
+  payAll: true,
 
   // ---------- poin (aturan rumah Teddy) ----------
   // Tiap pemain kalah: poin = sisa kartu × pengali + jumlah kartu 2 yang tersisa × twoBonus (bonus TIDAK ikut dikali).
