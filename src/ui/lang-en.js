@@ -96,6 +96,16 @@ export const EN = {
   'Koin meja bot kurang untuk meja {s}': 'Not enough bot-table coins for table {s}', 'Ronde ditinggal dihitung kalah: {n} koin': 'Abandoned round counted as a loss: {n} coins',
   'Ronde ini masih jalan. Keluar sekarang dihitung kalah: −{n} koin.': 'This round is still running. Leaving now counts as a loss: −{n} coins.',
   'koin meja bot': 'bot-table coins',
+  // kasih menang & pemenang jalan duluan
+  'Pemain sesudahmu sisa 1 kartu: main satu = wajib kartu tertinggi, kalau tidak bisa kena bayar semua':
+    'The next player has 1 card left: if you play a single it must be your highest, or you may pay for everyone',
+  'Awas: bukan kartu tertinggimu — kalau dia habis, kamu bayar semua': 'Careful: not your highest card — if they go out, you pay for everyone',
+  'bayar semua': 'pays all', 'dibayar {name}': 'paid by {name}',
+  'Kasih menang: {name} bayar semua': 'Let them win: {name} pays for everyone',
+  'Ronde pertama: pemegang 3♦ jalan pertama, dan kartu pertama yang dikeluarkan harus mengandung 3♦. Ronde berikutnya: pemenang ronde sebelumnya jalan duluan, bebas.':
+    'First round: whoever holds the 3♦ starts, and the first play must include the 3♦. Later rounds: the previous winner starts and may lead anything.',
+  'Kasih menang = bayar semua: kalau pemain sesudahmu tinggal 1 kartu dan putarannya satu kartu, kamu wajib keluarkan kartu tertinggimu. Kalau kamu keluarkan kartu lebih kecil, atau pass padahal bisa menutup, lalu dia habis, kamu bayar poin semua yang kalah.':
+    'Letting someone win = paying for everyone: when the next player has 1 card left in a singles trick, you must play your highest card. If you play a lower card, or pass when you could beat it, and they go out, you pay all losers\' points.',
   // kombinasi
   'Satu': 'Single', 'Pasang': 'Pair', 'Tris': 'Triple', 'Straight': 'Straight', 'Flush': 'Flush', 'Full house': 'Full house',
   'Four of a kind': 'Four of a kind', 'Straight flush': 'Straight flush',

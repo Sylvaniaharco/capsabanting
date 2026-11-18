@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCards as P } from '../src/engine/cards.js';
-import { newHand, applyAction, viewFor, penalty, multOf, scoreHands, mustLead } from '../src/engine/game.js';
-import { RULES } from '../src/engine/rules.config.js';
+import { newHand, applyAction, viewFor, penalty, multOf, scoreHands, mustLead, faultOf } from '../src/engine/game.js';
+import { RULES, makeRules } from '../src/engine/rules.config.js';
 import { playOut } from '../src/engine/sim.js';
 
 const act = (g, seat, a) => {
@@ -69,8 +69,65 @@ test('boleh menutup permainan pakai kartu 2; ronde langsung selesai saat ada yan
   assert.equal(g.phase, 'done');
   assert.equal(g.result.winner, 0);
   assert.equal(applyAction(g, 1, { t: 'pass' }).ok, false);
-  // 4 kartu tanpa 2 = 4; 5 kartu dengan satu 2 = 14; 6 kartu dengan dua 2 = 20
-  assert.deepEqual(g.result.points, [38, -4, -14, -20]);
+  // kursi 3 pass padahal 2♥-nya bisa menutup 3♦ saat kursi 0 tinggal 1 kartu = "kasih menang": bayar semua (4 + 14 + 20)
+  assert.equal(g.result.payAll, 3);
+  assert.deepEqual(g.result.points, [38, 0, 0, -38]);
+  // tanpa aturan bayar semua: tiap yang kalah bayar sendiri (4 kartu tanpa 2 = 4; 5 kartu dengan satu 2 = 14; 6 kartu dengan dua 2 = 20)
+  assert.deepEqual(scoreHands(g.hands, 0).points, [38, -4, -14, -20]);
+});
+
+test('kasih menang: pemain sesudahmu tinggal 1 kartu → wajib kartu tertinggi, kalau tidak bayar semua', () => {
+  // kursi 1 memimpin 5♣ (bukan kartu tertingginya, K♠) padahal kursi 2 tinggal 1 kartu → kursi 2 habis → kursi 1 bayar semua
+  const g = fixed(['3d 4c', '5c Ks', '9h', '6d 7d 8d']);
+  g.first = false;
+  g.turn = 1;
+  play(g, 1, '5c');
+  play(g, 2, '9h');
+  assert.equal(g.result.winner, 2);
+  assert.equal(g.result.payAll, 1);
+  assert.deepEqual(g.result.points, [0, -6, 6, 0]); // 2 + 1 + 3 kartu, semua dibayar kursi 1
+  // kalau kursi 1 memimpin kartu tertingginya lalu tetap kalah, bayar masing-masing
+  const h = fixed(['3d 4c', '5c 6s', '7h', '6d 7d 8d']);
+  h.first = false;
+  h.turn = 1;
+  play(h, 1, '6s');
+  play(h, 2, '7h');
+  assert.equal(h.result.payAll, -1);
+  assert.deepEqual(h.result.points, [-2, -1, 6, -3]);
+  // memimpin pasang tidak melanggar (yang tinggal 1 kartu tidak bisa ikut)
+  const k = fixed(['3d 4c', '5c 5s Ks', '9h', '6d 7d 8d']);
+  k.first = false;
+  k.turn = 1;
+  assert.equal(faultOf(k, 1, { t: 'play', cards: P('5c 5s') }), false);
+  assert.equal(faultOf(k, 1, { t: 'play', cards: P('5c') }), true);
+  assert.equal(faultOf(k, 1, { t: 'play', cards: P('Ks') }), false);
+  // pass saat kartu tertinggi tidak bisa menutup: tidak melanggar
+  const m = fixed(['2s 4c', '5c 6s', '9h', '6d 7d 8d']);
+  m.first = false;
+  play(m, 0, '2s');
+  assert.equal(faultOf(m, 1, { t: 'pass' }), false);
+  // yang lain (bukan pemain tepat sebelum si pemenang) tidak kena
+  const n = fixed(['3d 4c', '5c 6s', 'Ah', '6d 7d 8d 2c']);
+  n.first = false;
+  n.turn = 3;
+  play(n, 3, '6d'); // kursi 3 bukan sebelum kursi 2
+  pass(n, 0);
+  assert.equal(faultOf(n, 1, { t: 'play', cards: P('6s') }), false, '6♠ tertinggi kursi 1');
+  play(n, 1, '6s');
+  play(n, 2, 'Ah');
+  assert.equal(n.result.payAll, -1);
+});
+
+test('ronde berikutnya: pemenang jalan duluan & bebas (tanpa 3♦); ronde pertama wajib 3♦', () => {
+  const g = newHand(9, RULES, 2);
+  assert.equal(g.turn, 2);
+  assert.equal(g.first, false);
+  const notThree = g.hands[2].find((c) => c !== 0);
+  assert.ok(applyAction(g, 2, { t: 'play', cards: [notThree] }).ok);
+  const first = newHand(9, RULES, -1);
+  assert.ok(first.first && first.hands[first.turn].includes(0));
+  const old = newHand(9, makeRules({ winnerLeads: false }), 2);
+  assert.ok(old.first && old.hands[old.turn].includes(0), 'winnerLeads false = 3♦ tiap ronde');
 });
 
 test('hitungan poin aturan rumah Teddy', () => {

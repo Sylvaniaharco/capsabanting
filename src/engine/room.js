@@ -30,7 +30,7 @@ function base(code, kind, now, level) {
   return {
     code, kind, status: 'lobby', hostId: null, createdAt: now, level: validLevel(level) ? level : DEFAULT_LEVEL,
     seats: new Array(N).fill(null), pending: [], round: 0, game: null, deadline: 0, turnAt: 0,
-    totals: new Array(N).fill(0), last: null, startAt: 0, nextAt: 0, ranked: null,
+    totals: new Array(N).fill(0), last: null, startAt: 0, nextAt: 0, ranked: null, lastWinner: -1,
   };
 }
 const seatFor = (u) => ({ id: u.id, name: cleanName(u.name), avatar: clampAvatar(u.avatar) ?? 0 });
@@ -109,7 +109,7 @@ function resetTurn(room, now) {
 
 function dealRound(room, seed, now) {
   room.round += 1;
-  room.game = newHand(seed, RULES); // pemegang 3♦ jalan pertama
+  room.game = newHand(seed, RULES, room.lastWinner); // ronde pertama: pemegang 3♦; berikutnya: pemenang ronde sebelumnya
   room.status = 'playing';
   room.last = null;
   room.nextAt = 0;
@@ -222,7 +222,8 @@ function finishHand(room, now) {
   r.points.forEach((p, i) => { room.totals[i] += p; });
   const abandoned = room.seats.map((s) => human(s) && (!!s.left || (!!s.offSince && now - s.offSince >= ABANDON_MS)));
   for (const s of room.seats) if (human(s)) s.idle = s.autoHand && s.auto ? (s.idle || 0) + 1 : 0;
-  room.last = { round: room.round, winner: r.winner, points: r.points, rows: r.rows, abandoned };
+  room.last = { round: room.round, winner: r.winner, points: r.points, rows: r.rows, payAll: r.payAll ?? -1, abandoned };
+  room.lastWinner = r.winner;
   room.status = 'result';
   room.deadline = 0;
   if (room.kind === 'ranked') {
@@ -359,7 +360,7 @@ export function settlePayload(room) {
   const hands = room.game.hands;
   return {
     gameId: `${room.code}:${L.round}:${room.createdAt.toString(36)}`,
-    stake: room.ranked.stake, winner: L.winner,
+    stake: room.ranked.stake, winner: L.winner, payAll: L.payAll ?? -1,
     seats: room.seats.map((s, i) => ({
       ...(human(s) ? { userId: s.userId, name: s.name, bot: false, abandoned: !!L.abandoned[i] } : { userId: null, name: s.name, bot: true }),
       left: hands[i].length, twos: countTwos(hands[i]),
@@ -406,7 +407,7 @@ export function viewFor(room, seat, online = () => true, viewerId = '') {
       waiting: seat < 0 && !!me, startAt: room.startAt, nextAt: room.nextAt,
     } : null,
     last: L && room.status === 'result' ? {
-      round: L.round, winner: L.winner, points: L.points, rows: L.rows, abandoned: L.abandoned, settled: L.settled ?? true,
+      round: L.round, winner: L.winner, points: L.points, rows: L.rows, payAll: L.payAll ?? -1, abandoned: L.abandoned, settled: L.settled ?? true,
       coins: L.coins || null, bonus: seat >= 0 && L.bonus ? L.bonus[seat] : 0,
       myRating: seat >= 0 && L.ratings ? L.ratings[seat] : null,
     } : null,

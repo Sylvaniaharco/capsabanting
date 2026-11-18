@@ -89,3 +89,22 @@ test('bot tidak mengintip: menukar isi tangan lawan tidak mengubah keputusan', (
     assert.deepEqual(botAction(g2, seat, 'hard', mulberry32(2)), a1);
   }
 });
+
+test('Sedang & Sulit tidak pernah "kasih menang"; waktu habis juga aman', () => {
+  for (const level of ['normal', 'hard']) {
+    for (let i = 0; i < 400; i++) {
+      const { g } = playOut(9000 + i, [level, level, level, level]);
+      assert.equal(g.result.payAll, -1, `${level} seed ${9000 + i}`);
+    }
+  }
+  // memimpin / mengikuti satu kartu saat pemain berikutnya tinggal 1 kartu
+  const g = fixed(['4d 9c Kh', '5s', '3h 5h 6h', '6d 7d 8d']);
+  assert.deepEqual(botAction(g, 0, 'normal', () => 0.5), { t: 'play', cards: P('Kh') }, 'memimpin: kartu tertinggi');
+  assert.deepEqual(timeoutAction(g, 0), { t: 'play', cards: P('Kh') });
+  applyAction(g, 0, { t: 'play', cards: P('4d') });
+  g.turn = 3;
+  g.hands[0] = P('3d');
+  // kursi 3 ikut 4♦, kursi 0 sesudahnya tinggal 1 kartu → kursi 3 wajib 8♦
+  assert.deepEqual(botAction(g, 3, 'hard', () => 0.5), { t: 'play', cards: P('8d') });
+  assert.deepEqual(timeoutAction(g, 3), { t: 'play', cards: P('8d') });
+});

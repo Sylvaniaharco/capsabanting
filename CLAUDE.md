@@ -48,6 +48,9 @@ npm run dev:online  # build + wrangler dev (meja teman). Ranked lokal: lihat REA
   `beats` (jumlah kartu sama; 5 kartu: jenis dulu baru `key`), `allMoves` (dipangkas, untuk bot & Saran; pemain boleh kombinasi sah apa pun).
 - `game.js`: satu ronde (state deterministik dari seed + urutan aksi, `applyAction`, `checkPlay`, `viewFor`, `scoreHands`). Pass tidak mengunci;
   `trick.passes` = jumlah pass sejak langkah terakhir, 3 pass → putaran baru. `viewFor` tidak boleh memuat tangan lawan atau seed.
+- Ronde pertama meja: pemegang 3♦ + wajib 3♦ (`g.first`); ronde berikutnya `newHand(seed, rules, room.lastWinner)` = pemenang jalan bebas
+  (`rules.winnerLeads`). "Kasih menang = bayar semua" (`rules.payAll`): `faultOf(g, seat, aksi)` dicek di tiap aksi, disimpan di `g.fault`;
+  kalau pemain sesudahnya langsung habis → `result.payAll` = kursi itu (`scoreHands(..., payAll)`), ikut `settlePayload.payAll` ke server akun.
 - `room.js`: logika meja murni untuk tiga jenis meja (`friends`, `ranked`, `practice`). `worker/room.js` hanya penyimpanan + WebSocket + alarm
   (`R.due` / `R.step`); lawan bot (`src/net/local.js`) memakai fungsi yang sama di HP. Server memvalidasi semua aksi (`R.act` → `applyAction`).
   `seat.id` (id HP / kunci kursi Ranked), `seat.userId`, dan saldo orang lain **tidak pernah** masuk `viewFor`.

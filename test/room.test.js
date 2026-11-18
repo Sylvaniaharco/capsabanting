@@ -38,9 +38,11 @@ test('meja teman: gabung, mulai diisi bot, ronde selesai, poin dijumlah nol', ()
   assert.ok(!R.join(room, { id: 'cccccccccccc', name: 'C' }).ok, 'sudah mulai');
   runHand(room, 0);
   assert.equal(room.totals.reduce((a, b) => a + b), 0);
+  const w = room.last.winner;
   assert.ok(R.next(room, A.id, 6, 1, rnd()).ok);
   assert.equal(room.round, 2);
-  assert.ok(room.game.hands[room.game.turn].includes(0), 'pemegang 3♦ jalan pertama tiap ronde');
+  assert.equal(room.game.turn, w, 'pemenang ronde sebelumnya jalan duluan');
+  assert.equal(room.game.first, false, 'ronde kedua tidak wajib 3♦');
 });
 
 test('aksi divalidasi server: bukan giliran / kursi bot / langkah pertama tanpa 3♦ ditolak', () => {
@@ -144,6 +146,7 @@ test('Ranked: mulai setelah waktu tunggu, bot isi kursi, kabur ditandai, settle 
   assert.equal(p.seats[p.winner].left, 0);
   assert.equal(p.seats.find((s) => s.userId === 'g:2').abandoned, true);
   assert.ok(p.seats.every((s) => Number.isInteger(s.left) && Number.isInteger(s.twos) && !('points' in s)));
+  assert.equal(p.payAll, room.last.payAll);
   assert.equal(R.rankedDue(room, now + 1e6), null, 'belum diselesaikan di server akun');
   const i1 = room.seats.findIndex((s) => s.userId === 'g:1');
   R.applySettle(room, { 'g:1': { delta: 12, rating: 1012, tier: 'bronze', coinDelta: -40, coins: 960, bonus: 100 } });
