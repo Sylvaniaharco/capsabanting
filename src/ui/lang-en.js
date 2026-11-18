@@ -2,7 +2,7 @@
 export const EN = {
   // umum
   'Batal': 'Cancel', 'Lanjut': 'Continue', 'Tutup': 'Close', 'Mengerti': 'Got it', 'Memuat…': 'Loading…', 'Keluar': 'Leave',
-  'Suara: nyala': 'Sound: on', 'Suara: mati': 'Sound: off', 'Aturan': 'Rules', 'Peringkat': 'Rankings', 'Pasang aplikasi': 'Install app',
+  'Suara: nyala': 'Sound: on', 'Suara: mati': 'Sound: off', 'Musik: nyala': 'Music: on', 'Musik: mati': 'Music: off', 'Aturan': 'Rules', 'Peringkat': 'Rankings', 'Pasang aplikasi': 'Install app',
   '4 pemain · 13 kartu · habiskan kartu duluan': '4 players · 13 cards · empty your hand first',
   // lobi
   'Ranked': 'Ranked', 'online · koin akun · rating Capsa Banting': 'online · account coins · Capsa Banting rating',
