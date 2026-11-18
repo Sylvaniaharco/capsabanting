@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Capsa Banting Kung2",
+  "short_name": "Capsa Banting",
+  "description": "Capsa Banting 4 pemain, 13 kartu: habiskan kartu duluan. Lawan bot, bareng teman, atau Ranked.",
+  "lang": "id",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070d1e",
+  "theme_color": "#0c1a3a",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
