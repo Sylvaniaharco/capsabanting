@@ -201,3 +201,29 @@ test('Ranked: kursi yang dipesan tapi tidak pernah tersambung dihitung kabur, la
   assert.ok(!room.seats.some((s) => s.userId === 'g:2'));
   assert.ok(out.removed[ranked(2).key]);
 });
+
+test('meja teman: siapa pun yang duduk boleh lanjut ke ronde berikutnya (bukan cuma pembuat meja)', () => {
+  const room = R.createRoom('ABCDE', A, 0);
+  assert.ok(R.join(room, B).ok);
+  assert.ok(R.start(room, A.id, 5, 0, rnd()).ok);
+  runHand(room, 0);
+  assert.ok(!R.next(room, 'zzzzzzzzzzzz', 6, 1, rnd()).ok, 'yang tidak duduk di meja ditolak');
+  assert.equal(room.hostId, A.id);
+  assert.ok(R.next(room, B.id, 6, 1, rnd()).ok, 'pemain biasa bisa melanjutkan');
+  assert.equal(room.round, 2);
+  runHand(room, 1);
+  R.leave(room, B.id);
+  assert.ok(!R.next(room, B.id, 7, 2, rnd()).ok, 'yang sudah keluar tidak bisa');
+  assert.ok(R.next(room, A.id, 7, 2, rnd()).ok);
+});
+
+test('Ranked: ronde berikutnya dijadwalkan server, pemain tidak bisa memaksanya', () => {
+  const room = R.createRanked('RANK1', 5, 0); // (code, stake, now)
+  assert.ok(R.reserve(room, ranked(1, 6000), 0).ok);
+  R.startRanked(room, 5, 0, rnd());
+  runHand(room, 0);
+  assert.equal(room.status, 'result');
+  // kursinya sah, tapi meja Ranked tetap menolak: tanpa ini pemain bisa memaksa ronde baru di meja koin
+  assert.equal(R.next(room, ranked(1).key, 6, 1, rnd()).ok, false);
+  assert.equal(room.round, 1);
+});

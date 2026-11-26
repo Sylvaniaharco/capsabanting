@@ -54,9 +54,16 @@ npm run dev:online  # build + wrangler dev (meja teman). Ranked lokal: lihat REA
 - `room.js`: logika meja murni untuk tiga jenis meja (`friends`, `ranked`, `practice`). `worker/room.js` hanya penyimpanan + WebSocket + alarm
   (`R.due` / `R.step`); lawan bot (`src/net/local.js`) memakai fungsi yang sama di HP. Server memvalidasi semua aksi (`R.act` → `applyAction`).
   `seat.id` (id HP / kunci kursi Ranked), `seat.userId`, dan saldo orang lain **tidak pernah** masuk `viewFor`.
+  Meja teman: `start` hanya host, tapi `next` (ronde berikutnya) boleh siapa saja yang masih duduk — kalau host-nya diam, meja nyangkut.
+  `next` menolak meja Ranked secara eksplisit (dijadwalkan server); jangan kembalikan ke cek `hostId` saja.
+- Durable Object diuji di `test/worker.test.js`: `cloudflare:workers` diganti tiruan lewat loader hook (`test/helpers/cfstub.mjs`) dan
+  `Date.now` dikunci supaya alarm bisa dimajukan. Perubahan di `worker/room.js` / `worker/lobby.js` → jalankan `npm test`.
 - Ranked: hasil tiap ronde → `settlePayload` (`left` & `twos` per kursi, tanpa poin) → `env.MAHJONG.settle` (aman diulang; gagal → coba lagi
   lewat alarm, setelah 8x ronde dianggap tanpa koin). Bentuk payload harus cocok dengan `cleanBantingSettle` di repo games-mahjong0hk.
   Kursi yang dipesan tapi tidak pernah tersambung dihitung kabur setelah `ABANDON_MS` (`offSince` diisi saat `reserve`).
+  `settle()` dijaga `this.settling`: RPC-nya membuka input gate DO, jadi tanpa itu satu ronde bisa dikirim dua kali sekaligus.
+  `BantingRoom` mengabari `BantingLobby` (`reopen` / `release`) waktu meja longgar lagi atau ditutup, supaya meja lama dipakai lagi
+  dan pemain tidak kepecah ke meja baru yang isinya bot semua.
 - **Dua saldo** (pola Doudizhu/Capsa): koin akun (server, bersama semua game) hanya bergerak di Ranked; koin meja bot (`cbt-wallet` di
   localStorage, tidak bisa dipercaya) hanya untuk lawan bot, dibayar di `practiceCoins` (`src/main.js`), ronde ditinggal dihitung kalah lewat
   `cbt-pending`. Koin akun **tidak boleh** berubah dari permainan lawan bot atau dari angka yang dihitung di HP.

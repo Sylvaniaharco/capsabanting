@@ -64,4 +64,22 @@ export class BantingLobby extends DurableObject {
     }
   }
 
+  /**
+   * Meja Ranked bilang kursinya longgar lagi (pemain keluar / dilepas). Tanpa ini, meja yang pernah penuh tidak pernah
+   * ditawarkan lagi dan pemain baru selalu bikin meja baru — pemainnya jadi kepecah lawan bot semua.
+   */
+  async reopen(stake, code) {
+    const st = this.state;
+    if (st.open[stake]) return; // sudah ada meja lain yang menerima pemain
+    st.open[stake] = code;
+    await this.ctx.storage.put('state', st);
+  }
+
+  /** Meja ditutup / dihapus: jangan ditawarkan lagi. */
+  async release(stake, code) {
+    const st = this.state;
+    if (st.open[stake] !== code) return;
+    st.open[stake] = '';
+    await this.ctx.storage.put('state', st);
+  }
 }
