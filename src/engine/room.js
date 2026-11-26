@@ -136,7 +136,9 @@ export function start(room, id, seed, now, rnd) {
 /** Ronde berikutnya (meja teman / latihan, ditekan host di layar hasil). Kursi pemain yang keluar diganti bot. */
 export function next(room, id, seed, now, rnd = mulberry32(seed)) {
   if (room.status !== 'result') return { ok: false, error: 'Ronde belum selesai' };
-  if (id !== room.hostId) return { ok: false, error: 'Hanya pembuat meja yang bisa melanjutkan' };
+  if (room.kind === 'ranked') return { ok: false, error: 'Ronde berikutnya jalan sendiri' }; // dijadwalkan server, bukan ditekan pemain
+  const seat = seatOf(room, id);
+  if (seat < 0 || room.seats[seat].left) return { ok: false, error: 'Kamu tidak duduk di meja ini' };
   if (!activeHumans(room).length) return { ok: false, error: 'Tidak ada pemain' };
   room.seats = room.seats.map((s) => (human(s) && s.left ? null : s));
   fillBots(room, rnd);

@@ -82,7 +82,7 @@ export const EN = {
   // hasil
   '{name} menang': '{name} wins', 'Kamu menang!': 'You win!', 'Kamu kalah': 'You lose', 'Keluar terakhir': 'Last play', 'Rating': 'Rating', 'Saldo': 'Balance',
   'Menyimpan koin & rating…': 'Saving coins & rating…', 'Bonus harian Ranked pertama hari ini: +{n} koin': 'Daily bonus for your first Ranked round today: +{n} coins',
-  'Lihat meja': 'View table', 'Menunggu pembuat meja…': 'Waiting for the host…', 'poin': 'points', 'Pemain': 'Player', 'Sisa': 'Left', 'Kartu 2': '2s',
+  'Lihat meja': 'View table', 'poin': 'points', 'Pemain': 'Player', 'Sisa': 'Left', 'Kartu 2': '2s',
   'Koin': 'Coins', 'Ronde berikutnya dalam {s} dtk': 'Next round in {s}s', 'Ketuk meja untuk kembali ke hasil': 'Tap the table to return to the results',
   // efek & riwayat
   'Semua pass — kamu bebas jalan': 'Everyone passed — lead anything', 'HABIS!': 'OUT!', '{name} habis!': '{name} is out!',
@@ -115,7 +115,7 @@ export const EN = {
   'Aksi tidak dikenal': 'Unknown action', 'Ronde sudah selesai': 'The round is over', 'Bukan giliranmu': 'Not your turn', 'Kamu harus mengeluarkan kartu': 'You must play a card',
   'Kursi tidak ditemukan': 'Seat not found', 'Permainan sudah mulai': 'The game has already started', 'Meja penuh': 'Table is full',
   'Hanya pembuat meja yang bisa memulai': 'Only the host can start', 'Ronde belum selesai': 'The round is not over yet',
-  'Hanya pembuat meja yang bisa melanjutkan': 'Only the host can continue', 'Tidak ada pemain': 'No players', 'Bukan waktunya': 'Not now', 'Bukan kursimu': 'Not your seat',
+  'Ronde berikutnya jalan sendiri': 'The next round starts on its own', 'Kamu tidak duduk di meja ini': 'You are not seated at this table', 'Tidak ada pemain': 'No players', 'Bukan waktunya': 'Not now', 'Bukan kursimu': 'Not your seat',
   'Meja sudah ditutup': 'The table is closed', 'Koin tidak cukup untuk meja ini': 'Not enough coins for this table',
   'Koin tidak cukup untuk lanjut di meja ini': 'Not enough coins to keep playing at this table',
   'Koneksi putus terlalu lama, kursimu diisi bot': 'Disconnected too long, a bot took your seat',

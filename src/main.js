@@ -916,8 +916,8 @@ function renderResult(view) {
     if (L.payAll >= 0) extra = `<p class="rs-bonus">${esc(tx('Kasih menang: {name} bayar semua', { name: nameOf(v, L.payAll) }))}</p>` + extra;
     let btns = `<button class="btn" data-r="peek" type="button">${tx('Lihat meja')}</button><button class="btn" data-r="leave" type="button">${tx('Keluar')}</button>`;
     if (ranked) btns += `<span class="note" id="rsNext"></span>`;
-    else if (v.host === v.seat) btns += `<button class="btn primary" data-r="next" type="button">${tx('Lanjut')}</button>`;
-    else btns += `<span class="note">${tx('Menunggu pembuat meja…')}</span>`;
+    // meja teman & lawan bot: siapa pun yang duduk boleh melanjutkan, jadi meja tidak nyangkut kalau pembuatnya diam
+    else if (me >= 0) btns += `<button class="btn primary" data-r="next" type="button">${tx('Lanjut')}</button>`;
     const sum = me >= 0 ? `${signed(L.points[me])} ${tx('poin')}${coinCol ? ` · <i class="coin"></i> ${signed(v.kind === 'practice' && T.paid?.round === v.round ? T.paid.delta : coinOf(me))}` : ''}` : '';
     box.innerHTML = `<div class="rs-panel"><div class="rs-head"><h2 class="${me < 0 ? '' : myWin ? 'win' : 'lose'}">${title}</h2>
       <span class="rs-sum ${me >= 0 ? cls(L.points[me]) : ''}">${sum}</span></div>
